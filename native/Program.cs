@@ -256,7 +256,7 @@ namespace MouseBattery
                 try
                 {
                     StringBuilder report = new StringBuilder(); report.AppendLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                    report.AppendLine("MouseBatteryTray native / OS " + Environment.OSVersion + " / " + (IntPtr.Size * 8) + " bit");
+                    report.AppendLine("MouseBatteryTray v" + Application.ProductVersion + " / OS " + Environment.OSVersion + " / " + (IntPtr.Size * 8) + " bit");
                     report.AppendLine("Only Ninjutso/ATK vendors are listed; no serial numbers or device paths.");
                     foreach (Device device in Hid.Enumerate()) report.AppendLine(device.Summary + " model=" + device.Model);
                     Directory.CreateDirectory(Store.DirectoryPath);

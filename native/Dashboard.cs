@@ -112,7 +112,7 @@ namespace MouseBattery
 
         public Dashboard(TrayContext owner)
         {
-            host = owner; Text = "鼠标电量 · Mouse Energy";
+            host = owner; Text = "鼠标电量 v" + Application.ProductVersion + " · Mouse Energy";
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
             Font = uiFont; BackColor = Palette.Background; ForeColor = Palette.Text;
             AutoScaleDimensions = new SizeF(96, 96); AutoScaleMode = AutoScaleMode.Dpi;
@@ -133,7 +133,7 @@ namespace MouseBattery
             Panel title = new Panel(); title.Dock = DockStyle.Fill;
             Label heading = LabelFor("设备电量", 23, Palette.Text); heading.Font = new Font("Microsoft YaHei UI", 23, FontStyle.Bold);
             heading.Dock = DockStyle.None; heading.AutoSize = true; heading.Location = new Point(0, 0); title.Controls.Add(heading);
-            Label subtitle = LabelFor("两只鼠标，一眼掌握。", 10, Palette.Muted); subtitle.Dock = DockStyle.None;
+            Label subtitle = LabelFor("v" + Application.ProductVersion + " · 两只鼠标，一眼掌握。", 10, Palette.Muted); subtitle.Dock = DockStyle.None;
             subtitle.AutoSize = true; subtitle.Location = new Point(2, 49); title.Controls.Add(subtitle);
             header.Controls.Add(title, 0, 0);
             refresh = ButtonFor("立即刷新", true); refresh.Dock = DockStyle.Top; refresh.Height = 38; refresh.Margin = new Padding(0, 7, 0, 0);

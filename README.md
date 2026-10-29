@@ -4,7 +4,7 @@
 
 ## 下载与运行
 
-前往 [Releases](https://github.com/ydc156439/mouse-battery-tray/releases/latest) 下载 ZIP，解压到固定位置，双击 `MouseBatteryTray.exe`。首次运行会打开电量面板，仅在检测到已连接设备时显示对应卡片与托盘图标。
+前往 [Releases](https://github.com/ydc156439/mouse-battery-tray/releases/latest) 下载 ZIP，解压到固定位置，双击带版本号的 EXE（例如 `MouseBatteryTray-v1.2.2-Windows.exe`）。首次运行会打开电量面板，仅在检测到已连接设备时显示对应卡片与托盘图标。
 
 - 托盘图标直接显示电量数字，悬停查看设备名称和充电状态。
 - 仅展示已检测到的连接设备，未插入或拔出后隐藏对应卡片和图标。
@@ -29,6 +29,10 @@
 以下为实际数字绘制器输出的测试值，包含 16px 原尺寸和 4 倍放大；并非 Windows 桌面截图：
 
 ![托盘数字绘制预览](docs/tray-digits-preview.png)
+
+## 版本识别
+
+从 v1.2.2 起，发布的 EXE 和 ZIP 均在文件名中包含版本号，例如 `MouseBatteryTray-v1.2.2-Windows.exe` 和 `MouseBatteryTray-v1.2.2-Windows.zip`。主窗口标题、说明文件、Windows 文件属性及诊断文件也包含版本号。源码构建输出仍为 `release/MouseBatteryTray.exe`。
 
 ## 系统要求
 
