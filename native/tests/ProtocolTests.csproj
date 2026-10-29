@@ -6,6 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Protocol.cs" />
+    <Compile Include="../Hid.cs" />
+    <Compile Include="TestStore.cs" />
     <Compile Include="ProtocolTests.cs" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using MouseBattery;
 
 internal static class ProtocolTests
@@ -46,6 +47,28 @@ internal static class ProtocolTests
         Reject(delegate { Protocol.ParseAtk(corrupt); }, "Reject corrupt checksum");
         byte[] unrelated = Atk(50, 0); unrelated[1] = 7;
         Reject(delegate { Protocol.ParseAtk(unrelated); }, "Reject unrelated response");
+        Check(Protocol.ParseSora(Sora(72, 0, 0, 0)).Present, "Sleeping mouse still has receiver");
+        Check(!Reading.Unknown("not inserted").Present, "Missing receiver is absent");
+        Device sora = new Device { Vendor = 0x1915, Pid = 0xAE1C, Page = 0xFFA0 };
+        Device atk = new Device { Vendor = 0x373B, Pid = 0x1017, Page = 0xFF02, Usage = 2 };
+        int queries = 0;
+        Func<Device, Reading> query = delegate(Device d) { queries++; return new Reading(d.Model == 0 ? 72 : 64, false, "online"); };
+        Reading[] values = Hid.Scan(new List<Device>(), null, true, query);
+        Check(!values[0].Present && !values[1].Present && queries == 0, "No inserted devices yields no visible entries or queries");
+        values = Hid.Scan(new List<Device> { sora }, values, false, query);
+        Check(values[0].Present && !values[1].Present && queries == 1, "Insert Sora queries immediately");
+        values = Hid.Scan(new List<Device> { sora }, values, false, query);
+        Check(values[0].Percent == 72 && queries == 1, "Presence polling does not repeat battery request");
+        values = Hid.Scan(new List<Device> { sora, atk }, values, false, query);
+        Check(values[0].Present && values[1].Present && queries == 2, "Insert ATK shows second entry and queries only new device");
+        values = Hid.Scan(new List<Device> { atk }, values, false, query);
+        Check(!values[0].Present && !values[0].Percent.HasValue && values[1].Present, "Unplug Sora removes entry and stale battery");
+        values = Hid.Scan(new List<Device>(), values, false, query);
+        Check(!values[0].Present && !values[1].Present, "Unplug both clears all entries");
+        values = Hid.Scan(new List<Device> { sora }, values, false, delegate(Device d) { return Reading.Unknown("sleeping"); });
+        Check(values[0].Present && !values[0].Percent.HasValue, "Inserted sleeping device remains visible without fabricated percent");
+        values = Hid.Scan(new List<Device> { atk }, values, true, delegate(Device d) { throw new Exception("busy"); });
+        Check(values[1].Present && !values[1].Percent.HasValue, "Inserted busy device remains visible with unknown battery");
         Console.WriteLine(count + " tests passed.");
     }
 }

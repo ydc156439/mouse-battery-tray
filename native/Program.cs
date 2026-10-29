@@ -41,10 +41,10 @@ namespace MouseBattery
         private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
         private readonly object gate = new object();
         private Reading[] pending;
-        private bool busy, stopping;
+        private bool busy, queryingBattery, stopping;
         private int interval = 60, threshold = 20;
         private bool notifications = true;
-        private DateTime next = DateTime.MinValue, updated;
+        private DateTime next = DateTime.MinValue, nextPresence = DateTime.MinValue, updated;
         private const string StartupKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private Dashboard dashboard;
         private readonly EventWaitHandle showSignal;
@@ -65,7 +65,7 @@ namespace MouseBattery
                 icons[i].Text = Protocol.Models[i];
                 icons[i].ContextMenuStrip = MenuFor(index);
                 icons[i].DoubleClick += delegate { Details(); };
-                icons[i].Visible = true;
+                icons[i].Visible = false;
             }
             timer.Interval = 250; timer.Tick += Tick; timer.Start();
             if (showPanel) Details();
@@ -75,24 +75,18 @@ namespace MouseBattery
         {
             using (Bitmap bitmap = new Bitmap(64, 64))
             using (Graphics graphics = Graphics.FromImage(bitmap))
-            using (Font small = new Font("Segoe UI", 9, FontStyle.Bold, GraphicsUnit.Pixel))
-            using (Font font = new Font("Segoe UI", reading.Percent == 100 ? 35 : 43, FontStyle.Bold, GraphicsUnit.Pixel))
+            using (Font font = new Font("Segoe UI", reading.Percent == 100 ? 34 : 50, FontStyle.Bold, GraphicsUnit.Pixel))
             {
                 graphics.Clear(Color.Transparent); graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                 Color color = reading.Charging ? Color.FromArgb(66, 214, 164) :
                     (reading.Percent.HasValue && reading.Percent.Value <= threshold ? Color.FromArgb(255, 107, 119) : TrayTextColor());
                 using (Brush brush = new SolidBrush(color))
-                using (Brush label = new SolidBrush(Color.FromArgb(112, 184, 255)))
                 using (StringFormat format = new StringFormat())
                 {
                     format.Alignment = StringAlignment.Center; format.LineAlignment = StringAlignment.Center;
                     graphics.DrawString(reading.Percent.HasValue ? reading.Percent.Value.ToString() : "--", font, brush,
-                        new RectangleF(0, 8, 64, 48), format);
-                    graphics.DrawString(index == 0 ? "S" : "A", small, label, 3, 0);
-                    if (reading.Charging) graphics.DrawString("+", small, brush, 53, 0);
-                    graphics.FillRectangle(Brushes.SlateGray, 4, 59, 56, 4);
-                    if (reading.Percent.HasValue) graphics.FillRectangle(brush, 4, 59, 56 * reading.Percent.Value / 100f, 4);
+                        new RectangleF(0, 0, 64, 64), format);
                 }
                 IntPtr handle = bitmap.GetHicon();
                 try { return (Icon)Icon.FromHandle(handle).Clone(); }
@@ -177,6 +171,7 @@ namespace MouseBattery
 
         internal void RequestRefresh() { next = DateTime.MinValue; }
         internal void Diagnose() { Export(); }
+        internal void Quit() { ExitThread(); }
         internal void Configure(int seconds, int low, bool notify, bool autostart)
         {
             interval = seconds; threshold = low; notifications = notify;
@@ -201,17 +196,26 @@ namespace MouseBattery
                 if (pending != null) { values = pending; pending = null; }
             }
             if (values != null) Apply(values);
-            if (dashboard != null && dashboard.Visible) dashboard.UpdateStatus(readings, updated, busy);
+            if (dashboard != null && dashboard.Visible) dashboard.UpdateStatus(readings, updated, busy && queryingBattery);
+            bool readBattery;
+            Reading[] previous = readings;
             lock (gate)
             {
-                if (busy || stopping || DateTime.UtcNow < next) return;
-                busy = true; next = DateTime.UtcNow.AddSeconds(interval);
+                DateTime now = DateTime.UtcNow;
+                if (busy || stopping || (now < nextPresence && now < next)) return;
+                readBattery = now >= next;
+                busy = true; queryingBattery = readBattery; nextPresence = now.AddSeconds(2);
+                if (readBattery) next = now.AddSeconds(interval);
             }
             ThreadPool.QueueUserWorkItem(delegate
             {
                 Reading[] result;
-                try { result = Hid.Scan(); }
-                catch (Exception ex) { Store.Log(ex.ToString()); result = new Reading[] { Reading.Unknown("设备检测失败"), Reading.Unknown("设备检测失败") }; }
+                try { result = Hid.Scan(previous, readBattery); }
+                catch (Exception ex)
+                {
+                    Store.Log(ex.ToString()); result = new Reading[] {
+                        Reading.Unknown("设备检测失败", previous[0].Present), Reading.Unknown("设备检测失败", previous[1].Present) };
+                }
                 lock (gate) { if (!stopping) pending = result; busy = false; }
             });
         }
@@ -223,6 +227,7 @@ namespace MouseBattery
             {
                 Icon previous = images[i]; images[i] = Draw(values[i], i); icons[i].Icon = images[i]; previous.Dispose();
                 string title = Protocol.Models[i] + " · " + values[i]; icons[i].Text = title.Length > 63 ? title.Substring(0, 63) : title;
+                icons[i].Visible = values[i].Present;
                 Reading reading = values[i];
                 if (!reading.Percent.HasValue) continue;
                 if (reading.Charging || reading.Percent.Value > threshold) { alerts[i] = DateTime.MinValue; continue; }
@@ -237,7 +242,7 @@ namespace MouseBattery
         private void Details()
         {
             if (dashboard == null || dashboard.IsDisposed) dashboard = new Dashboard(this);
-            dashboard.SyncSettings(); dashboard.UpdateStatus(readings, updated, busy);
+            dashboard.SyncSettings(); dashboard.UpdateStatus(readings, updated, busy && queryingBattery);
             dashboard.Show(); if (dashboard.WindowState == FormWindowState.Minimized) dashboard.WindowState = FormWindowState.Normal;
             dashboard.Activate();
         }

@@ -182,21 +182,28 @@ namespace MouseBattery
                     if (length >= 2 && input[0] == 8 && input[1] == 4)
                     { byte[] reply = new byte[length]; Array.Copy(input, reply, length); return Protocol.ParseAtk(reply); }
                 }
-                return Reading.Unknown("无响应：可能休眠或被驱动占用");
+                return Reading.Unknown("无响应：可能休眠或被驱动占用", true);
             }
         }
 
         public static Reading[] Scan()
+        { return Scan(null, true); }
+
+        public static Reading[] Scan(Reading[] previous, bool readBattery)
+        { return Scan(Enumerate(), previous, readBattery, Query); }
+
+        internal static Reading[] Scan(List<Device> devices, Reading[] previous, bool readBattery, Func<Device, Reading> query)
         {
             Reading[] values = { Reading.Unknown("未检测到接收器"), Reading.Unknown("未检测到接收器") };
-            List<Device> devices = Enumerate();
             devices.Sort(delegate(Device a, Device b) { return Priority(a).CompareTo(Priority(b)); });
             foreach (Device device in devices)
             {
                 int model = device.Model;
                 if (model < 0 || values[model].Percent.HasValue) continue;
-                try { values[model] = Query(device); }
-                catch (Exception ex) { Store.Log(device.Summary + " " + ex.Message); values[model] = Reading.Unknown("读取失败：请查看诊断"); }
+                if (!readBattery && previous != null && previous[model].Present)
+                { values[model] = previous[model]; continue; }
+                try { values[model] = query(device); values[model].Present = true; }
+                catch (Exception ex) { Store.Log(device.Summary + " " + ex.Message); values[model] = Reading.Unknown("读取失败：请查看诊断", true); }
             }
             return values;
         }

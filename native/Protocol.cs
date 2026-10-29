@@ -7,9 +7,12 @@ namespace MouseBattery
         public int? Percent;
         public bool Charging;
         public string Status;
+        public bool Present;
         public Reading(int? percent, bool charging, string status)
-        { Percent = percent; Charging = charging; Status = status; }
-        public static Reading Unknown(string status) { return new Reading(null, false, status); }
+        { Percent = percent; Charging = charging; Status = status; Present = true; }
+        public static Reading Unknown(string status) { return Unknown(status, false); }
+        public static Reading Unknown(string status, bool present)
+        { Reading value = new Reading(null, false, status); value.Present = present; return value; }
         public override string ToString()
         { return Percent.HasValue ? Percent + "% · " + (Charging ? "充电中" : Status) : Status; }
     }
@@ -42,7 +45,7 @@ namespace MouseBattery
             int percent = data[9];
             if (percent > 100 || data[10] > 1 || data[11] > 1 || data[12] > 1)
                 throw new FormatException("Sora 电量或状态无效");
-            if (data[10] == 0 && data[11] == 0 && data[12] == 0) return Reading.Unknown("休眠或离线");
+            if (data[10] == 0 && data[11] == 0 && data[12] == 0) return Reading.Unknown("休眠或离线", true);
             return new Reading(data[11] == 1 ? 100 : percent, data[10] == 1,
                 data[11] == 1 ? "已充满" : "在线");
         }
