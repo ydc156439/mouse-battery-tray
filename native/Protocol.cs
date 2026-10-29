@@ -19,23 +19,18 @@ namespace MouseBattery
 
     public static class Protocol
     {
-        public static readonly string[] Models = { "Sora V2", "ATK X1 Pro Max" };
-        private static readonly int[] AtkIds = { 0x1017, 0x101A, 0x101B, 0x1031, 0x1159,
-            0x11A7, 0x1283, 0x11D9, 0x1278, 0x11FE, 0x127A, 0x11FD, 0x1279 };
-
+        public static readonly string[] Models = { "Sora V2" };
         public static int Match(int vendor, int product, int page)
         {
             if (vendor == 0x1915 && (product == 0xAE1C || product == 0xAE11) && page == 0xFFA0) return 0;
-            if (vendor == 0x373B && Array.IndexOf(AtkIds, product) >= 0 && (page == 0xFF02 || page == 0xFF04)) return 1;
             return -1;
         }
 
-        public static byte[] Request(int model, int length)
+        public static byte[] Request(int length)
         {
-            if (length < (model == 0 ? 32 : 17)) throw new ArgumentException("HID 报告长度不足");
+            if (length < 32) throw new ArgumentException("HID 报告长度不足");
             byte[] data = new byte[length];
-            if (model == 0) { data[0] = 5; data[1] = 0x15; data[4] = 1; }
-            else { data[0] = 8; data[1] = 4; data[16] = 0x49; }
+            data[0] = 5; data[1] = 0x15; data[4] = 1;
             return data;
         }
 
@@ -50,16 +45,5 @@ namespace MouseBattery
                 data[11] == 1 ? "已充满" : "在线");
         }
 
-        public static Reading ParseAtk(byte[] data)
-        {
-            if (data.Length < 10 || data[0] != 8 || data[1] != 4) throw new FormatException("ATK 响应编号或长度错误");
-            if (data[6] > 100 || data[7] > 1) throw new FormatException("ATK 电量或状态无效");
-            if (data.Length >= 17)
-            {
-                int sum = 0; for (int i = 0; i < 17; i++) sum += data[i];
-                if ((sum & 255) != 0x55) throw new FormatException("ATK 电量响应校验失败");
-            }
-            return new Reading(data[6], data[7] == 1, "在线");
-        }
     }
 }

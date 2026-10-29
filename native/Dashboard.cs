@@ -33,7 +33,7 @@ namespace MouseBattery
         private int threshold = 20;
         public BatteryCard(int index)
         {
-            model = index; Dock = DockStyle.Fill; Margin = new Padding(index == 0 ? 0 : 8, 0, index == 0 ? 8 : 0, 0);
+            model = index; Dock = DockStyle.Fill; Margin = Padding.Empty;
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
                 ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             BackColor = Palette.Background; AccessibleRole = AccessibleRole.Grouping;
@@ -63,11 +63,11 @@ namespace MouseBattery
             using (Brush surface = new SolidBrush(Palette.Surface))
             using (Pen border = new Pen(Palette.Border))
             { g.FillPath(surface, outline); g.DrawPath(border, outline); }
-            Color accent = model == 0 ? Palette.Mint : Palette.Blue;
+            Color accent = Palette.Mint;
             Color valueColor = reading.Charging ? Palette.Mint :
                 (reading.Percent.HasValue && reading.Percent.Value <= threshold ? Palette.Red : Palette.Text);
             using (Brush marker = new SolidBrush(accent)) g.FillEllipse(marker, 22, 25, 7, 7);
-            TextAt(g, model == 0 ? "NINJUTSO" : "ATK", 10, FontStyle.Bold, Palette.Muted, new RectangleF(36, 19, 200, 18));
+            TextAt(g, "NINJUTSO", 10, FontStyle.Bold, Palette.Muted, new RectangleF(36, 19, 200, 18));
             TextAt(g, Protocol.Models[model], 20, FontStyle.Bold, Palette.Text, new RectangleF(21, 43, 280, 32));
             bool connected = reading.Percent.HasValue;
             string state = !connected ? "等待连接" : (reading.Charging ? "正在充电" : reading.Percent <= threshold ? "电量偏低" : "连接正常");
@@ -99,7 +99,7 @@ namespace MouseBattery
     internal sealed class Dashboard : Form
     {
         private readonly TrayContext host;
-        private readonly BatteryCard[] cards = { new BatteryCard(0), new BatteryCard(1) };
+        private readonly BatteryCard[] cards = { new BatteryCard(0) };
         private readonly ComboBox rate = new ComboBox(), limit = new ComboBox();
         private readonly CheckBox notify = new CheckBox(), startup = new CheckBox();
         private readonly Label last = new Label();
@@ -112,7 +112,7 @@ namespace MouseBattery
 
         public Dashboard(TrayContext owner)
         {
-            host = owner; Text = "鼠标电量 v" + Application.ProductVersion + " · Mouse Energy";
+            host = owner; Text = "Sora V2 电量 v" + Application.ProductVersion + " · Mouse Energy";
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
             Font = uiFont; BackColor = Palette.Background; ForeColor = Palette.Text;
             AutoScaleDimensions = new SizeF(96, 96); AutoScaleMode = AutoScaleMode.Dpi;
@@ -133,19 +133,19 @@ namespace MouseBattery
             Panel title = new Panel(); title.Dock = DockStyle.Fill;
             Label heading = LabelFor("设备电量", 23, Palette.Text); heading.Font = new Font("Microsoft YaHei UI", 23, FontStyle.Bold);
             heading.Dock = DockStyle.None; heading.AutoSize = true; heading.Location = new Point(0, 0); title.Controls.Add(heading);
-            Label subtitle = LabelFor("v" + Application.ProductVersion + " · 两只鼠标，一眼掌握。", 10, Palette.Muted); subtitle.Dock = DockStyle.None;
+            Label subtitle = LabelFor("v" + Application.ProductVersion + " · 专注 Sora V2，电量一眼掌握。", 10, Palette.Muted); subtitle.Dock = DockStyle.None;
             subtitle.AutoSize = true; subtitle.Location = new Point(2, 49); title.Controls.Add(subtitle);
             header.Controls.Add(title, 0, 0);
             refresh = ButtonFor("立即刷新", true); refresh.Dock = DockStyle.Top; refresh.Height = 38; refresh.Margin = new Padding(0, 7, 0, 0);
             refresh.Click += delegate { host.RequestRefresh(); }; header.Controls.Add(refresh, 1, 0); layout.Controls.Add(header, 0, 0);
 
             deviceGrid.Dock = DockStyle.Fill;
-            deviceGrid.Margin = Padding.Empty; deviceGrid.ColumnCount = 2;
-            deviceGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50)); deviceGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            deviceGrid.Controls.Add(cards[0], 0, 0); deviceGrid.Controls.Add(cards[1], 1, 0); layout.Controls.Add(deviceGrid, 0, 1);
+            deviceGrid.Margin = Padding.Empty; deviceGrid.ColumnCount = 1;
+            deviceGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            deviceGrid.Controls.Add(cards[0], 0, 0); layout.Controls.Add(deviceGrid, 0, 1);
             emptyState.Dock = DockStyle.Fill; emptyState.TextAlign = ContentAlignment.MiddleCenter; emptyState.ForeColor = Palette.Muted;
             emptyState.Font = new Font("Microsoft YaHei UI", 12); emptyState.BackColor = Palette.Surface;
-            emptyState.Text = "等待鼠标接收器\n\n插入 Sora V2 或 ATK X1 Pro Max 接收器后，设备会自动出现。";
+            emptyState.Text = "等待 Sora V2 接收器\n\n插入 Sora V2 接收器或连接 USB 线后，设备会自动出现。";
 
             TableLayoutPanel settings = new TableLayoutPanel(); settings.BackColor = Palette.Surface;
             settings.Dock = DockStyle.Fill; settings.Margin = Padding.Empty; settings.Padding = new Padding(18, 14, 18, 12);
@@ -219,30 +219,21 @@ namespace MouseBattery
         }
         public void UpdateStatus(Reading[] values, DateTime updated, bool busy)
         {
-            int mask = (values[0].Present ? 1 : 0) | (values[1].Present ? 2 : 0);
+            int mask = values[0].Present ? 1 : 0;
             if (mask != displayedMask)
             {
                 deviceGrid.SuspendLayout();
                 try
                 {
                     deviceGrid.Controls.Clear();
-                    for (int i = 0; i < 2; i++) cards[i].Visible = false;
-                    if (mask == 0)
-                    { deviceGrid.Controls.Add(emptyState, 0, 0); deviceGrid.SetColumnSpan(emptyState, 2); emptyState.Visible = true; }
-                    else
-                    {
-                        int column = 0;
-                        for (int i = 0; i < 2; i++) if (values[i].Present)
-                        {
-                            deviceGrid.Controls.Add(cards[i], column++, 0); cards[i].Margin = mask == 3 ? new Padding(i == 0 ? 0 : 8, 0, i == 0 ? 8 : 0, 0) : Padding.Empty;
-                            deviceGrid.SetColumnSpan(cards[i], mask == 3 ? 1 : 2); cards[i].Visible = true;
-                        }
-                    }
+                    cards[0].Visible = values[0].Present;
+                    if (values[0].Present) deviceGrid.Controls.Add(cards[0], 0, 0);
+                    else { deviceGrid.Controls.Add(emptyState, 0, 0); emptyState.Visible = true; }
                     displayedMask = mask;
                 }
                 finally { deviceGrid.ResumeLayout(true); }
             }
-            for (int i = 0; i < 2; i++) cards[i].UpdateReading(values[i], host.AlertThreshold);
+            cards[0].UpdateReading(values[0], host.AlertThreshold);
             refresh.Enabled = !busy; refresh.Text = busy ? "正在读取…" : "立即刷新";
             last.Text = busy ? "正在从接收器读取电量…" : updated == DateTime.MinValue ? "等待第一次读取" :
                 "上次检测 " + updated.ToString("HH:mm:ss") + "\n关闭窗口后继续在托盘运行";

@@ -34,10 +34,10 @@ namespace MouseBattery
 
     internal sealed class TrayContext : ApplicationContext
     {
-        private readonly NotifyIcon[] icons = new NotifyIcon[2];
-        private readonly Icon[] images = new Icon[2];
-        private Reading[] readings = { Reading.Unknown("正在检测"), Reading.Unknown("正在检测") };
-        private readonly DateTime[] alerts = { DateTime.MinValue, DateTime.MinValue };
+        private readonly NotifyIcon[] icons = new NotifyIcon[Protocol.Models.Length];
+        private readonly Icon[] images = new Icon[Protocol.Models.Length];
+        private Reading[] readings = { Reading.Unknown("正在检测") };
+        private readonly DateTime[] alerts = { DateTime.MinValue };
         private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
         private readonly object gate = new object();
         private Reading[] pending;
@@ -57,7 +57,7 @@ namespace MouseBattery
         {
             showSignal = signal;
             LoadSettings();
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < Protocol.Models.Length; i++)
             {
                 int index = i;
                 icons[i] = new NotifyIcon();
@@ -213,7 +213,7 @@ namespace MouseBattery
                 catch (Exception ex)
                 {
                     Store.Log(ex.ToString()); result = new Reading[] {
-                        Reading.Unknown("设备检测失败", previous[0].Present), Reading.Unknown("设备检测失败", previous[1].Present) };
+                        Reading.Unknown("设备检测失败", previous[0].Present) };
                 }
                 lock (gate) { if (!stopping) pending = result; busy = false; }
             });
@@ -222,7 +222,7 @@ namespace MouseBattery
         private void Apply(Reading[] values)
         {
             readings = values; updated = DateTime.Now;
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < Protocol.Models.Length; i++)
             {
                 Icon previous = images[i]; images[i] = Draw(values[i], i); icons[i].Icon = images[i]; previous.Dispose();
                 string title = Protocol.Models[i] + " · " + values[i]; icons[i].Text = title.Length > 63 ? title.Substring(0, 63) : title;
@@ -257,7 +257,7 @@ namespace MouseBattery
                 {
                     StringBuilder report = new StringBuilder(); report.AppendLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                     report.AppendLine("MouseBatteryTray v" + Application.ProductVersion + " / OS " + Environment.OSVersion + " / " + (IntPtr.Size * 8) + " bit");
-                    report.AppendLine("Only Ninjutso/ATK vendors are listed; no serial numbers or device paths.");
+                    report.AppendLine("Only Ninjutso devices are listed; no serial numbers or device paths.");
                     foreach (Device device in Hid.Enumerate()) report.AppendLine(device.Summary + " model=" + device.Model);
                     Directory.CreateDirectory(Store.DirectoryPath);
                     File.WriteAllText(Path.Combine(Store.DirectoryPath, "diagnostics.txt"), report.ToString(), Encoding.UTF8);
@@ -294,7 +294,7 @@ namespace MouseBattery
             lock (gate) stopping = true;
             timer.Stop(); timer.Dispose();
             if (dashboard != null) dashboard.Dispose();
-            for (int i = 0; i < 2; i++) { icons[i].Visible = false; icons[i].ContextMenuStrip.Dispose(); icons[i].Dispose(); images[i].Dispose(); }
+            for (int i = 0; i < Protocol.Models.Length; i++) { icons[i].Visible = false; icons[i].ContextMenuStrip.Dispose(); icons[i].Dispose(); images[i].Dispose(); }
             base.ExitThreadCore();
         }
     }
