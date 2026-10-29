@@ -75,18 +75,17 @@ namespace MouseBattery
         {
             using (Bitmap bitmap = new Bitmap(64, 64))
             using (Graphics graphics = Graphics.FromImage(bitmap))
-            using (Font font = new Font("Segoe UI", reading.Percent == 100 ? 34 : 50, FontStyle.Bold, GraphicsUnit.Pixel))
             {
-                graphics.Clear(Color.Transparent); graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                graphics.Clear(Color.Transparent);
+                graphics.SmoothingMode = SmoothingMode.None;
                 Color color = reading.Charging ? Color.FromArgb(66, 214, 164) :
                     (reading.Percent.HasValue && reading.Percent.Value <= threshold ? Color.FromArgb(255, 107, 119) : TrayTextColor());
                 using (Brush brush = new SolidBrush(color))
-                using (StringFormat format = new StringFormat())
                 {
-                    format.Alignment = StringAlignment.Center; format.LineAlignment = StringAlignment.Center;
-                    graphics.DrawString(reading.Percent.HasValue ? reading.Percent.Value.ToString() : "--", font, brush,
-                        new RectangleF(0, 0, 64, 64), format);
+                    bool[,] pixels = TrayDigits.Render(reading.Percent);
+                    for (int y = 0; y < 16; y++)
+                        for (int x = 0; x < 16; x++)
+                            if (pixels[x, y]) graphics.FillRectangle(brush, x * 4, y * 4, 4, 4);
                 }
                 IntPtr handle = bitmap.GetHicon();
                 try { return (Icon)Icon.FromHandle(handle).Clone(); }

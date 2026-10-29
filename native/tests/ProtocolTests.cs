@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using MouseBattery;
 
 internal static class ProtocolTests
@@ -14,7 +15,7 @@ internal static class ProtocolTests
     private static byte[] Atk(int percent, int charge)
     { byte[] d = new byte[17]; d[0] = 8; d[1] = 4; d[6] = (byte)percent; d[7] = (byte)charge;
       int sum = 0; for (int i = 0; i < 16; i++) sum += d[i]; d[16] = (byte)((0x55 - sum) & 255); return d; }
-    public static void Main()
+    public static void Main(string[] args)
     {
         Check(Protocol.Match(0x1915, 0xAE1C, 0xFFA0) == 0, "Sora wireless ID");
         Check(Protocol.Match(0x1915, 0xAE11, 0xFFA0) == 0, "Sora wired ID");
@@ -69,6 +70,41 @@ internal static class ProtocolTests
         Check(values[0].Present && !values[0].Percent.HasValue, "Inserted sleeping device remains visible without fabricated percent");
         values = Hid.Scan(new List<Device> { atk }, values, true, delegate(Device d) { throw new Exception("busy"); });
         Check(values[1].Present && !values[1].Percent.HasValue, "Inserted busy device remains visible with unknown battery");
+        bool[,] digits = TrayDigits.Render(72);
+        // 7 on the left and 2 on the right must both be present in one line.
+        Check(digits[1, 1] && digits[5, 1] && digits[9, 1] && digits[13, 1], "Two-digit top row contains both glyphs");
+        Check(digits[9, 13] && digits[13, 13], "Second digit bottom row is not clipped");
+        digits = TrayDigits.Render(100);
+        Check(digits[3, 1] && digits[6, 1] && digits[10, 1], "100 contains all three digits on one line");
+        Check(digits[4, 13] && digits[8, 13] && digits[12, 13], "100 complete bottom row");
+        bool fits = true;
+        for (int value = 0; value <= 100; value++)
+        {
+            digits = TrayDigits.Render(value); int filled = 0;
+            for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++)
+            {
+                if (digits[x, y]) filled++;
+                if ((x == 0 || x == 15 || y == 0 || y == 15) && digits[x, y]) fits = false;
+            }
+            if (filled == 0) fits = false;
+        }
+        Check(fits, "All values 0-100 stay inside the tray grid with a safety margin");
+        digits = TrayDigits.Render(null);
+        Check(digits[1, 7] && digits[13, 7] && !digits[1, 1], "Unknown value keeps two visible dashes");
         Console.WriteLine(count + " tests passed.");
+        if (args.Length == 1)
+        {
+            Directory.CreateDirectory(args[0]);
+            foreach (int value in new int[] { 0, 9, 10, 20, 72, 99, 100 })
+            {
+                digits = TrayDigits.Render(value);
+                using (StreamWriter writer = new StreamWriter(Path.Combine(args[0], value + ".ppm")))
+                {
+                    writer.WriteLine("P3\n16 16\n255");
+                    for (int y = 0; y < 16; y++)
+                    { for (int x = 0; x < 16; x++) writer.Write(digits[x, y] ? "235 241 250 " : "24 32 44 "); writer.WriteLine(); }
+                }
+            }
+        }
     }
 }
