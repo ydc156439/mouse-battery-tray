@@ -1,0 +1,67 @@
+鼠标电量托盘 — 免 Python 版
+版本 1.1.0 / 2026-10-29
+
+【启动】
+1. 将压缩包解压到固定位置，例如 D:\MouseBatteryTray。
+2. 插入 Sora V2 或 ATK X1 Pro Max 的 USB 接收器。
+3. 双击 MouseBatteryTray.exe。无需安装 Python，也无需管理员权限。
+4. 自动打开电量面板，同时在任务栏右下角显示 S、A 两个电量图标；可能在 ^ 隐藏图标区。
+
+【使用】
+S 代表 Sora V2，A 代表 ATK X1 Pro Max。
+数字是当前电量，绿色和 + 表示充电中，低电量显示红色。托盘数字适配系统深浅主题。
+-- 表示未获取有效电量。悬停可查看原因，双击图标打开电量面板。
+电量面板使用深色双设备卡片，集中展示大号电量、状态、充电进度和最后检测时间。
+面板内可设置自动刷新、低电量阈值、通知和开机启动；「连接排查」中可导出诊断。
+关闭面板或点击「收起到托盘」后继续后台监控；完全退出请使用托盘右键「退出」。
+程序运行中再次双击 EXE，会打开已有面板。开机启动时只显示托盘，不弹出面板。
+托盘右键也可以刷新、设置刷新间隔、提醒阈值、开机启动、导出诊断和退出。
+默认 60 秒刷新，20% 及以下提醒；同一鼠标每小时最多提醒一次。
+开机启动默认关闭。启用后请保留 EXE 的路径；移动前先关闭，移动后重新开启。
+
+【运行环境】
+面向标准 Windows 10 / Windows 11 桌面系统，使用系统自带的 .NET Framework 4.6 或更高版本。
+EXE 为 AnyCPU 托管程序，可随 Windows 系统使用 32 位或 64 位 CLR。
+不依赖 Python、pip、hidapi DLL 或另外安装的 .NET 8。
+“免安装”不代表支持所有操作系统。此 EXE 不能直接运行在 macOS、Linux、手机系统，
+也不能保证在删除了 .NET 系统组件的精简 Windows、Windows S 模式或限制桌面程序的环境中运行。
+
+【读不到电量】
+先移动或点击鼠标唤醒，再右键立即刷新。
+关闭 ATK HUB、Ninjutso 官方软件及网页驱动，避免同时占用 HID 配置接口。
+重新插拔接收器，必要时先只插一只鼠标的接收器排查。
+无响应、离线、异常报文均不伪装成电量百分比；不保留过期数字充当当前电量。
+
+【设备范围】
+Sora V2：VID 1915；无线 AE1C / 有线 AE11；Usage Page FFA0。
+ATK X1 Pro Max：VID 373B；型号 PID 1017；Usage Page FF02 / FF04。
+已列入电量查询的 ATK 接收器：101A、101B、1031、1159、11A7、1283、
+11D9、1278、11FE、127A、11FD、1279。
+通用 ATK 接收器不能自行证明后面的鼠标型号，本程序按用户的 X1 Pro Max 命名。
+不同固件和接收器变体可能需要额外适配。新 FF05 协议和蓝牙模式未适配。
+当前假定每个品牌一只目标鼠标，多个同品牌设备取第一个有效结果。
+程序仅查询电量，不改变 DPI、配对、鼠标配置或固件。
+
+【日志与诊断】
+右键导出诊断，打开 %LOCALAPPDATA%\MouseBatteryTrayNative。
+diagnostics.txt 列出 Ninjutso / ATK 设备编号、接口、报告长度和产品名称。
+monitor.log 记录读取错误，settings.txt 保存设置。文件只留在本机，不上传。
+诊断不包含设备序列号和完整系统设备路径。
+卸载时先取消开机启动，右键退出，再删除程序文件和上述本机设置目录。
+
+【实际验证状态】
+已使用微软 .NET SDK 8.0.427 的 C# 编译器和 .NET Framework 4.6 引用程序集
+交叉编译出这个 Windows GUI EXE。SDK 仅用于开发电脑编译，使用者无需安装。
+已运行原生 C# 协议测试，27 项全部通过；已检查 EXE 的 PE / CLR 结构。
+1.1 界面已通过 C# 5 / .NET Framework 4.6 编译，未在 Windows 渲染界面进行视觉实测。
+未在实际 Windows 桌面运行，未连接这两款鼠标验证。托盘、通知、开机启动和
+实物电量读取仍待 Windows 实机测试。测试电量为模拟响应，不代表读过你的鼠标。
+
+【协议依据】
+https://github.com/Fan4Metal/Sora_tray/blob/master/sora_tray.py
+https://github.com/papelblume/atk-tool-plus/blob/main/registry.go
+https://github.com/papelblume/atk-tool-plus/blob/main/device.go
+https://github.com/666mille/MyATxMouseControl#protocol
+
+【Windows 组件说明】
+https://learn.microsoft.com/en-us/dotnet/framework/install/versions-and-dependencies
